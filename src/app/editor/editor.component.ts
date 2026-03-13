@@ -21,15 +21,11 @@ const deleteBlockEffect = StateEffect.define<string>();
 
 // 自定义 Widget
 class BlockWidget extends WidgetType {
-  constructor(
-    public block: EditorBlock,
-    private onOpenPopup: (id: string, rect: DOMRect) => void,
-    private onUpdate: (id: string, text: string) => void
-  ) {
+  constructor(public block: EditorBlock) {
     super();
   }
 
-  override toDOM() {
+  override toDOM(view: EditorView) {
     const span = document.createElement('span');
     span.className = 'cm-inline-block';
     span.setAttribute('data-block-id', this.block.id);
@@ -59,18 +55,33 @@ class BlockWidget extends WidgetType {
     input.oninput = (e) => {
       const val = (e.target as HTMLInputElement).value;
       input.style.width = `${measureWidth(val)}px`;
-      this.onUpdate(this.block.id, val);
+      // 通过 view 获取组件并更新
+      const component = (view as any)._component as EditorComponent;
+      if (component) {
+        component.updateBlockText(this.block.id, val);
+      }
     };
 
-    // 重点：当 input 获焦时，触发弹窗展示，但不阻止事件，保证 input 可编辑
+    // 重点：当 input 获焦或点击时，触发弹窗展示
     input.onfocus = (e) => {
       const rect = span.getBoundingClientRect();
-      this.onOpenPopup(this.block.id, rect);
+      const component = (view as any)._component as EditorComponent;
+      if (component) {
+        component.openPopup(this.block.id, rect);
+      }
     };
 
-    // 阻止点击事件冒泡到 CodeMirror，但允许 input 获取焦点
+    input.onmousedown = (e) => {
+      e.stopPropagation();
+    };
+
     input.onclick = (e) => {
       e.stopPropagation();
+      const rect = span.getBoundingClientRect();
+      const component = (view as any)._component as EditorComponent;
+      if (component) {
+        component.openPopup(this.block.id, rect);
+      }
     };
 
     span.appendChild(input);
@@ -96,11 +107,7 @@ const blockField = StateField.define<DecorationSet>({
       if (e.is(addBlockEffect)) {
         const pos = tr.state.selection.main.head;
         const blockDecoration = Decoration.widget({
-          widget: new BlockWidget(
-            e.value,
-            (tr.state as any)._onOpenPopup,
-            (tr.state as any)._onUpdateText
-          ),
+          widget: new BlockWidget(e.value),
           side: 0
         }).range(pos);
         decorations = decorations.update({ add: [blockDecoration] });
@@ -121,11 +128,7 @@ const blockField = StateField.define<DecorationSet>({
               return !(widget instanceof BlockWidget && widget.block.id === newBlock.id);
             },
             add: [Decoration.widget({
-              widget: new BlockWidget(
-                newBlock,
-                (tr.state as any)._onOpenPopup,
-                (tr.state as any)._onUpdateText
-              ),
+              widget: new BlockWidget(newBlock),
               side: 0
             }).range(pos)]
           });
@@ -219,21 +222,20 @@ export class EditorComponent implements OnInit, OnDestroy {
       parent: this.editorHost.nativeElement
     });
 
-    // 绑定回调
-    (this.view.state as any)._onOpenPopup = (id: string, rect: DOMRect) => {
-      this.openPopup(id, rect);
-    };
-    (this.view.state as any)._onUpdateText = (id: string, text: string) => {
-      const block = this.allBlocks.get(id);
-      if (block) {
-        block.presetText = text;
-        this.allBlocks.set(id, block);
-        // 如果当前弹窗正在编辑这个块，也同步弹窗数据
-        if (this.showPopup && this.editingBlock.id === id) {
-          this.editingBlock.presetText = text;
-        }
+    // 绑定组件实例到 view，供 Widget 使用
+    (this.view as any)._component = this;
+  }
+
+  updateBlockText(id: string, text: string) {
+    const block = this.allBlocks.get(id);
+    if (block) {
+      block.presetText = text;
+      this.allBlocks.set(id, block);
+      // 同步到当前编辑中的块
+      if (this.showPopup && this.editingBlock.id === id) {
+        this.editingBlock.presetText = text;
       }
-    };
+    }
   }
 
   openPopup(id: string, rect: DOMRect) {
@@ -265,13 +267,15 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   saveBlock() {
     if (this.editingBlock.id) {
-      this.allBlocks.set(this.editingBlock.id, { ...this.editingBlock });
-      // 更新编辑器中的 widget (通过 re-dispatch 触发 StateField 更新)
-      // 在这个演示中，我们直接 dispatch 一个空的更新来刷新视图
-      // 实际上应该通过 updateBlockEffect
+      // 深度同步到全局 Map
+      const updatedBlock = { ...this.editingBlock };
+      this.allBlocks.set(updatedBlock.id, updatedBlock);
+      
+      // 通过 dispatch 触发装饰器重新创建，从而刷新 input 的 placeholder 和内容
       this.view.dispatch({
-        effects: updateBlockEffect.of(this.editingBlock)
+        effects: updateBlockEffect.of(updatedBlock)
       });
+      
       this.closePopup();
     }
   }
