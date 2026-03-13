@@ -1,0 +1,246 @@
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: 20px auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  // Header
+  .editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f3f4f6;
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+
+      .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+
+        &.btn-ghost {
+          background: #f9fafb;
+          color: #4b5563;
+          &:hover { background: #f3f4f6; }
+        }
+
+        &.btn-primary {
+          background: #f3f0ff;
+          color: #8066ff;
+          &:hover { background: #e9e4ff; }
+          
+          &.btn-sparkle {
+            background: #f3f0ff;
+            color: #8066ff;
+            &::before { content: '✨'; margin-right: 4px; }
+          }
+        }
+      }
+    }
+  }
+
+  // Body
+  .editor-body {
+    position: relative;
+    min-height: 400px;
+
+    .editor-host {
+      height: 100%;
+      .cm-editor {
+        height: 100%;
+      }
+    }
+
+    // Popup
+    .block-popup {
+      position: absolute;
+      z-index: 1000;
+      width: 320px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+      border: 1px solid #f3f4f6;
+      padding: 20px;
+      animation: popup-fade-in 0.2s ease-out;
+
+      .popup-content {
+        .form-item {
+          margin-bottom: 16px;
+          label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+          }
+          input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            &::placeholder { color: #9ca3af; }
+            &:focus { border-color: #8066ff; }
+          }
+        }
+      }
+
+      .popup-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+        
+        button {
+          padding: 6px 16px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          border: 1px solid transparent;
+        }
+        
+        .btn-cancel {
+          background: #fff;
+          color: #4b5563;
+          border-color: #e5e7eb;
+          &:hover { background: #f9fafb; }
+        }
+        
+        .btn-save {
+          background: #8066ff;
+          color: #fff;
+          &:hover { background: #6b4dff; }
+        }
+      }
+
+      .popup-arrow {
+        position: absolute;
+        top: -6px;
+        left: 20px;
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        transform: rotate(45deg);
+        border-top: 1px solid #f3f4f6;
+        border-left: 1px solid #f3f4f6;
+      }
+    }
+  }
+
+  // Footer
+  .editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #fff;
+    border-top: 1px solid #f3f4f6;
+    border-radius: 0 0 12px 12px;
+
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      &:hover { background: #e5e7eb; }
+    }
+
+    .btn-primary {
+      background: #4f46e5;
+      color: #fff;
+      &:hover { background: #4338ca; }
+    }
+  }
+}
+
+@keyframes popup-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Global CM Overrides
+::ng-deep {
+  .cm-editor {
+    border: none !important;
+  }
+  .cm-scroller {
+    font-family: inherit !important;
+  }
+  .cm-content {
+    caret-color: #8066ff;
+  }
+  .cm-selectionBackground {
+    background: #e9e4ff !important;
+  }
+
+  .cm-inline-block {
+    display: inline-block;
+    background-color: #f3f0ff;
+    color: #8066ff;
+    padding: 0 8px;
+    margin: 0 4px;
+    border-radius: 4px;
+    cursor: text;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    font-size: 15px;
+    vertical-align: middle;
+    pointer-events: auto;
+
+    &:hover {
+      background-color: #e9e4ff;
+      border-color: #8066ff;
+    }
+  }
+
+  .block-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
+    font: inherit;
+    padding: 4px 0;
+    width: auto;
+    min-width: 20px;
+    text-align: center;
+    cursor: text;
+    pointer-events: auto;
+
+    &::placeholder {
+      color: #b2a1ff;
+      opacity: 0.7;
+    }
+  }
+}

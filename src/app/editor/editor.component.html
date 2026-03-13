@@ -1,0 +1,44 @@
+<div class="editor-container">
+  <!-- 顶部工具栏 -->
+  <div class="editor-header">
+    <div class="header-title">提示词</div>
+    <div class="header-actions">
+      <button class="action-btn btn-ghost" (click)="addBlock()">
+        <i class="icon-block"></i> 编辑块
+      </button>
+      <button class="action-btn btn-primary btn-sparkle">
+        <i class="icon-sparkle"></i> 优化
+      </button>
+    </div>
+  </div>
+
+  <!-- 编辑器主体 -->
+  <div class="editor-body">
+    <div #editorHost class="editor-host"></div>
+
+    <!-- 编辑块配置弹窗 -->
+    <div *ngIf="showPopup" class="block-popup" [ngStyle]="popupStyle">
+      <div class="popup-content">
+        <div class="form-item">
+          <label>空白引导</label>
+          <input type="text" [(ngModel)]="editingBlock.placeholder" placeholder="请输入编辑块内容为空时的提示文案">
+        </div>
+        <div class="form-item">
+          <label>预设文本</label>
+          <input type="text" [(ngModel)]="editingBlock.presetText" placeholder="请在此处输入提示词">
+        </div>
+        <div class="popup-footer">
+          <button class="btn-cancel" (click)="closePopup()">取消</button>
+          <button class="btn-save" (click)="saveBlock()">保存</button>
+        </div>
+      </div>
+      <div class="popup-arrow"></div>
+    </div>
+  </div>
+
+  <!-- 底部操作栏 -->
+  <div class="editor-footer">
+    <button class="btn-secondary">确认并对比调试</button>
+    <button class="btn-primary">确认</button>
+  </div>
+</div>
