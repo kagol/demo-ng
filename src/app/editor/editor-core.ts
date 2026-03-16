@@ -88,9 +88,14 @@ class BlockWidget extends WidgetType {
 }
 
 // 状态字段：管理文档中的所有块装饰器
-export const createBlockField = (callbacks: CodeMirrorCallbacks) => StateField.define<DecorationSet>({
+export const createBlockField = (callbacks: CodeMirrorCallbacks, initialBlocks: { pos: number, block: EditorBlock }[] = []) => StateField.define<DecorationSet>({
   create() {
-    return Decoration.none;
+    if (initialBlocks.length === 0) return Decoration.none;
+    const deco = initialBlocks.map(({ pos, block }) => Decoration.widget({
+      widget: new BlockWidget(block, callbacks),
+      side: 0
+    }).range(pos));
+    return Decoration.set(deco, true);
   },
   update(decorations, tr) {
     decorations = decorations.map(tr.changes);
@@ -179,14 +184,14 @@ export const editorTheme = EditorView.theme({
   '.cm-header-1': { fontSize: '1.5em', color: '#008c99', fontWeight: 'bold' }
 });
 
-export function createEditorState(initialDoc: string, callbacks: CodeMirrorCallbacks) {
+export function createEditorState(initialDoc: string, callbacks: CodeMirrorCallbacks, initialBlocks: { pos: number, block: EditorBlock }[] = []) {
   return EditorState.create({
     doc: initialDoc,
     extensions: [
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ base: markdownLanguage, codeLanguages: languages }),
-      createBlockField(callbacks),
+      createBlockField(callbacks, initialBlocks),
       editorTheme
     ]
   });

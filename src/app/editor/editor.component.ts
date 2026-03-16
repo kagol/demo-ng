@@ -30,7 +30,21 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
   allBlocks: Map<string, EditorBlock> = new Map();
 
   ngOnInit() {
-    const initialState = createEditorState('# 角色\n\n你是一个 ', this);
+    const initialBlocks = [
+      {
+        pos: 11,
+        block: {
+          id: 'init-block-1',
+          placeholder: '请输入...',
+          presetText: '智能助手'
+        }
+      }
+    ];
+
+    // 同步到 allBlocks 以便后续弹窗读取
+    initialBlocks.forEach(item => this.allBlocks.set(item.block.id, item.block));
+
+    const initialState = createEditorState('# 角色\n\n你是一个 ', this, initialBlocks);
     
     this.view = new EditorView({
       state: initialState,
