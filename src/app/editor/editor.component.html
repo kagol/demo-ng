@@ -36,7 +36,7 @@
       <div class="plugin-popup-content">
         <div class="plugin-category">
           <div class="category-title">插件</div>
-          <div *ngFor="let item of plugins" class="plugin-item" (click)="addPluginBlock(item)">
+          <div *ngFor="let item of libraryPlugin.plugins" class="plugin-item" (click)="addPluginBlock(item)">
             <i class="icon-plugin"></i>
             <span class="item-name">{{ item.name }}</span>
             <button class="btn-add">添加</button>
@@ -44,7 +44,7 @@
         </div>
         <div class="plugin-category">
           <div class="category-title">工作流</div>
-          <div *ngFor="let item of workflows" class="plugin-item" (click)="addPluginBlock(item)">
+          <div *ngFor="let item of libraryPlugin.workflows" class="plugin-item" (click)="addPluginBlock(item)">
             <i class="icon-workflow"></i>
             <span class="item-name">{{ item.name }}</span>
             <button class="btn-add">添加</button>

@@ -8,6 +8,7 @@ import {
   CustomEditorOptions
 } from './editor-core';
 import { AIDialogPlugin } from './plugins/ai-dialog';
+import { LibraryBlockPlugin } from './plugins/library-block';
 
 @Component({
   selector: 'app-editor',
@@ -29,13 +30,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   // 插件弹窗状态
   showPluginPopup = false;
   pluginPopupStyle = { top: '0px', left: '0px' };
-  plugins = [
-    { id: 'plugin-1', name: 'LinkReaderPlugin', type: 'plugin' as const },
-  ];
-  workflows = [
-    { id: 'workflow-1', name: 'condition_1_872', type: 'workflow' as const },
-  ];
-  private pluginTriggerPos: number = 0;
+  libraryPlugin!: LibraryBlockPlugin;
 
   // AI 对话框状态
   showAIDialog = false;
@@ -80,6 +75,16 @@ export class EditorComponent implements OnInit, OnDestroy {
       onLoading: (loading) => this.aiLoading = loading,
       onComplete: () => this.isGenerating = false,
       onStop: () => this.isGenerating = false
+    });
+
+    this.libraryPlugin = new LibraryBlockPlugin({
+      onShow: (pos, style) => {
+        this.pluginPopupStyle = style;
+        this.showPluginPopup = true;
+      },
+      onHide: () => {
+        this.showPluginPopup = false;
+      }
     });
   }
 
@@ -131,20 +136,15 @@ export class EditorComponent implements OnInit, OnDestroy {
   }
 
   openPluginPopup(pos: number) {
-    this.pluginTriggerPos = pos;
     const coords = this.editor.coordsAtPos(pos);
     if (coords) {
       const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
-      this.pluginPopupStyle = {
-        top: `${coords.bottom - editorRect.top + 10}px`,
-        left: `${coords.left - editorRect.left}px`
-      };
-      this.showPluginPopup = true;
+      this.libraryPlugin.show(pos, coords, editorRect);
     }
   }
 
   addPluginBlock(item: { id: string, name: string, type: 'plugin' | 'workflow' }) {
-    this.editor.addPluginBlock(this.pluginTriggerPos, item);
+    this.editor.addPluginBlock(this.libraryPlugin.getTriggerPos(), item);
     this.closePopup();
   }
 
@@ -160,7 +160,7 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   closePopup() {
     this.showPopup = false;
-    this.showPluginPopup = false;
+    this.libraryPlugin.hide();
     this.showAIDialog = false;
     this.stopAIResponse();
   }
