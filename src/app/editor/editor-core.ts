@@ -198,3 +198,16 @@ export function createEditorView(parent: HTMLElement, state: EditorState) {
     parent
   });
 }
+
+export function getEditorData(view: EditorView, blocks: Map<string, EditorBlock>) {
+  const content = view.state.doc.toString();
+  const blockList = Array.from(blocks.values());
+  
+  return {
+    json: {
+      content,
+      blocks: blockList
+    },
+    html: view.dom.querySelector('.cm-content')?.innerHTML || ''
+  };
+}
