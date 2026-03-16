@@ -41,7 +41,6 @@ export class EditorComponent implements OnInit, OnDestroy {
   aiResponseText = '';
   isGenerating = false;
   aiLoading = false;
-  private aiTriggerPos: number = 0;
   private aiPlugin!: AIDialogPlugin;
 
   ngOnInit() {
@@ -76,7 +75,17 @@ export class EditorComponent implements OnInit, OnDestroy {
       onStream: (text) => this.aiResponseText = text,
       onLoading: (loading) => this.aiLoading = loading,
       onComplete: () => this.isGenerating = false,
-      onStop: () => this.isGenerating = false
+      onStop: () => this.isGenerating = false,
+      onShow: (pos, style) => {
+        this.aiDialogStyle = style;
+        this.aiQuestion = '';
+        this.aiResponseText = '';
+        this.showAIDialog = true;
+      },
+      onHide: () => {
+        this.showAIDialog = false;
+        this.isGenerating = false;
+      }
     });
 
     this.libraryPlugin = new LibraryBlockPlugin({
@@ -117,17 +126,10 @@ export class EditorComponent implements OnInit, OnDestroy {
   }
 
   openAIDialog(pos: number) {
-    this.aiTriggerPos = pos;
     const coords = this.editor.coordsAtPos(pos);
     if (coords) {
       const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
-      this.aiDialogStyle = {
-        top: `${coords.bottom - editorRect.top + 10}px`,
-        left: `${coords.left - editorRect.left}px`
-      };
-      this.aiQuestion = '';
-      this.aiResponseText = '';
-      this.showAIDialog = true;
+      this.aiPlugin.show(pos, coords, editorRect);
     }
   }
 
@@ -169,8 +171,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   closePopup() {
     this.editPlugin.hide();
     this.libraryPlugin.hide();
-    this.showAIDialog = false;
-    this.stopAIResponse();
+    this.aiPlugin.hide();
   }
 
   onConfirm() {

@@ -3,14 +3,31 @@ export interface AIResponseCallbacks {
   onLoading: (loading: boolean) => void;
   onComplete: () => void;
   onStop: () => void;
+  onShow: (pos: number, style: { top: string, left: string }) => void;
+  onHide: () => void;
 }
 
 export class AIDialogPlugin {
   private isGenerating = false;
   private aiStreamTimer: any = null;
   private currentResponse = '';
+  private triggerPos: number = 0;
 
   constructor(private callbacks: AIResponseCallbacks) {}
+
+  public show(pos: number, coords: { bottom: number, left: number }, editorRect: DOMRect) {
+    this.triggerPos = pos;
+    const style = {
+      top: `${coords.bottom - editorRect.top + 10}px`,
+      left: `${coords.left - editorRect.left}px`
+    };
+    this.callbacks.onShow(pos, style);
+  }
+
+  public hide() {
+    this.stopResponse();
+    this.callbacks.onHide();
+  }
 
   public sendQuestion(question: string) {
     if (!question || this.isGenerating) return;
