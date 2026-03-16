@@ -36,6 +36,16 @@ export class EditorComponent implements OnInit, OnDestroy {
   ];
   private pluginTriggerPos: number = 0;
 
+  // AI 对话框状态
+  showAIDialog = false;
+  aiDialogStyle = { top: '0px', left: '0px' };
+  aiQuestion = '';
+  aiResponseText = '';
+  isGenerating = false;
+  aiLoading = false;
+  private aiTriggerPos: number = 0;
+  private aiStreamTimer: any = null;
+
   ngOnInit() {
     const initialBlocks = [
       {
@@ -54,6 +64,7 @@ export class EditorComponent implements OnInit, OnDestroy {
       initialBlocks,
       onOpenPopup: (id, rect) => this.openPopup(id, rect),
       onTriggerPluginPopup: (pos) => this.openPluginPopup(pos),
+      onTriggerAIDialog: (pos) => this.openAIDialog(pos),
       onBlockUpdated: (id, text) => {
         if (this.showPopup && this.editingBlock.id === id) {
           this.editingBlock.presetText = text;
@@ -80,9 +91,55 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   @HostListener('document:mousedown', ['$event'])
   onDocumentMouseDown(event: MouseEvent) {
-    if (this.showPopup || this.showPluginPopup) {
+    if (this.showPopup || this.showPluginPopup || (this.showAIDialog && !this.isGenerating)) {
       this.closePopup();
     }
+  }
+
+  openAIDialog(pos: number) {
+    this.aiTriggerPos = pos;
+    const coords = this.editor.view.coordsAtPos(pos);
+    if (coords) {
+      const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
+      this.aiDialogStyle = {
+        top: `${coords.bottom - editorRect.top + 10}px`,
+        left: `${coords.left - editorRect.left}px`
+      };
+      this.aiQuestion = '';
+      this.aiResponseText = '';
+      this.showAIDialog = true;
+    }
+  }
+
+  sendAIQuestion() {
+    if (!this.aiQuestion || this.isGenerating) return;
+
+    this.isGenerating = true;
+    this.aiLoading = true;
+    this.aiResponseText = '';
+
+    // 模拟 AI 流式输出
+    const fullResponse = `洲、美洲积累了丰富的在地经验，擅长结合用户需求定制专属旅行方案，曾帮助1000+人解决旅行难题，被旅行者亲切称为"旅行百事通"。\n\n## 核心性格与风格\n- **性格特点**：热情开朗、专业耐心，擅长用轻松幽默的方式化解旅行焦虑（如："别慌！机票改签我有3个小窍门，保准帮你搞定~"），遇到用户疑问会像朋友般细致拆解细节（如："你担心的高原反应，我去年在西藏徒步时总结过4个缓解方法..."）。\n- **语言风格**：口语化且富有感染力，常用"宝藏地""小众玩法"等旅行圈`;
+    
+    let index = 0;
+    this.aiStreamTimer = setInterval(() => {
+      this.aiLoading = false;
+      if (index < fullResponse.length) {
+        this.aiResponseText += fullResponse[index];
+        index++;
+      } else {
+        this.stopAIResponse();
+      }
+    }, 30);
+  }
+
+  stopAIResponse() {
+    if (this.aiStreamTimer) {
+      clearInterval(this.aiStreamTimer);
+      this.aiStreamTimer = null;
+    }
+    this.isGenerating = false;
+    this.aiLoading = false;
   }
 
   openPluginPopup(pos: number) {
@@ -116,6 +173,8 @@ export class EditorComponent implements OnInit, OnDestroy {
   closePopup() {
     this.showPopup = false;
     this.showPluginPopup = false;
+    this.showAIDialog = false;
+    this.stopAIResponse();
   }
 
   onConfirm() {

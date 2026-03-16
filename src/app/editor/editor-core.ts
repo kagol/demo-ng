@@ -23,6 +23,7 @@ export interface CustomEditorOptions {
   initialBlocks?: { pos: number, block: EditorBlock }[];
   onOpenPopup: (id: string, rect: DOMRect) => void;
   onTriggerPluginPopup: (pos: number) => void;
+  onTriggerAIDialog: (pos: number) => void;
   onBlockDeleted?: (id: string) => void;
   onBlockUpdated?: (id: string, text: string) => void;
 }
@@ -69,8 +70,13 @@ export class CustomEditor {
         this.view.update([tr]);
         if (tr.docChanged) {
           tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
-            if (inserted.length === 1 && inserted.sliceString(0) === '{') {
-              this.options.onTriggerPluginPopup(fromA);
+            const char = inserted.sliceString(0);
+            if (inserted.length === 1) {
+              if (char === '{') {
+                this.options.onTriggerPluginPopup(fromA);
+              } else if (char === '/') {
+                this.options.onTriggerAIDialog(fromA);
+              }
             }
           });
         }
