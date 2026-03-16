@@ -4,11 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { EditorView } from '@codemirror/view';
 import {
   EditorBlock,
-  CodeMirrorCallbacks,
-  addBlockEffect,
-  updateBlockEffect, 
-  createEditorState,
-  getEditorData
+  CustomEditor,
+  CustomEditorOptions
 } from './editor-core';
 
 @Component({
@@ -19,15 +16,14 @@ import {
   styleUrls: ['./editor.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
+export class EditorComponent implements OnInit, OnDestroy {
   @ViewChild('editorHost', { static: true }) editorHost!: ElementRef;
-  private view!: EditorView;
+  private editor!: CustomEditor;
 
   // 弹窗状态
   showPopup = false;
   popupStyle = { top: '0px', left: '0px' };
   editingBlock: EditorBlock = { id: '', placeholder: '', presetText: '' };
-  allBlocks: Map<string, EditorBlock> = new Map();
 
   ngOnInit() {
     const initialBlocks = [
@@ -41,36 +37,23 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
       }
     ];
 
-    // 同步到 allBlocks 以便后续弹窗读取
-    initialBlocks.forEach(item => this.allBlocks.set(item.block.id, item.block));
-
-    // 为初始块在文档中预留一个空格
-    const initialState = createEditorState('# 角色\n\n你是一个  ', this, initialBlocks);
-    
-    this.view = new EditorView({
-      state: initialState,
-      parent: this.editorHost.nativeElement
-    });
-  }
-
-  deleteBlock(id: string) {
-    this.allBlocks.delete(id);
-  }
-
-  updateBlockText(id: string, text: string) {
-    const block = this.allBlocks.get(id);
-    if (block) {
-      block.presetText = text;
-      this.allBlocks.set(id, block);
-      // 同步到当前编辑中的块
-      if (this.showPopup && this.editingBlock.id === id) {
-        this.editingBlock.presetText = text;
+    const options: CustomEditorOptions = {
+      parent: this.editorHost.nativeElement,
+      initialDoc: '# 角色\n\n你是一个  ',
+      initialBlocks,
+      onOpenPopup: (id, rect) => this.openPopup(id, rect),
+      onBlockUpdated: (id, text) => {
+        if (this.showPopup && this.editingBlock.id === id) {
+          this.editingBlock.presetText = text;
+        }
       }
-    }
+    };
+
+    this.editor = new CustomEditor(options);
   }
 
   openPopup(id: string, rect: DOMRect) {
-    const block = this.allBlocks.get(id);
+    const block = this.editor.getBlock(id);
     if (block) {
       this.editingBlock = { ...block };
       this.showPopup = true;
@@ -85,38 +68,18 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
 
   @HostListener('document:mousedown', ['$event'])
   onDocumentMouseDown(event: MouseEvent) {
-    // 如果点击了弹窗外部，关闭弹窗
-    // 这里弹窗内部已经 stopPropagation 了，所以只要进到这里且 showPopup 为 true 就可以认为点击了外部
     if (this.showPopup) {
       this.closePopup();
     }
   }
 
   addBlock() {
-    const newBlock: EditorBlock = {
-      id: Math.random().toString(36).substr(2, 9),
-      placeholder: '请输入编辑块内容为空时的提示文案',
-      presetText: ''
-    };
-    this.allBlocks.set(newBlock.id, newBlock);
-    const { from, to } = this.view.state.selection.main;
-    this.view.dispatch({
-      changes: { from, to, insert: ' ' }, // Insert a space for the block
-      effects: addBlockEffect.of(newBlock),
-      selection: { anchor: from + 1 }
-    });
-    this.view.focus();
+    this.editor.addBlock();
   }
 
   syncBlock() {
     if (this.editingBlock.id) {
-      const updatedBlock = { ...this.editingBlock };
-      this.allBlocks.set(updatedBlock.id, updatedBlock);
-      
-      // 实时同步到 CodeMirror 视图
-      this.view.dispatch({
-        effects: updateBlockEffect.of(updatedBlock)
-      });
+      this.editor.syncBlock(this.editingBlock);
     }
   }
 
@@ -125,7 +88,7 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
   }
 
   onConfirm() {
-    const data = getEditorData(this.view, this.allBlocks);
+    const data = this.editor.getData();
     console.log('--- Editor Data (JSON) ---');
     console.log(JSON.stringify(data.json, null, 2));
     console.log('--- Editor Data (HTML) ---');
@@ -133,8 +96,8 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
   }
 
   ngOnDestroy() {
-    if (this.view) {
-      this.view.destroy();
+    if (this.editor) {
+      this.editor.destroy();
     }
   }
 }

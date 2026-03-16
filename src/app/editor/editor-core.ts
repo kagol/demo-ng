@@ -17,6 +17,93 @@ export interface CodeMirrorCallbacks {
   deleteBlock: (id: string) => void;
 }
 
+export interface CustomEditorOptions {
+  parent: HTMLElement;
+  initialDoc: string;
+  initialBlocks?: { pos: number, block: EditorBlock }[];
+  onOpenPopup: (id: string, rect: DOMRect) => void;
+  onBlockDeleted?: (id: string) => void;
+  onBlockUpdated?: (id: string, text: string) => void;
+}
+
+export class CustomEditor {
+  public view: EditorView;
+  public allBlocks: Map<string, EditorBlock> = new Map();
+  private options: CustomEditorOptions;
+
+  constructor(options: CustomEditorOptions) {
+    this.options = options;
+
+    if (options.initialBlocks) {
+      options.initialBlocks.forEach(item => this.allBlocks.set(item.block.id, item.block));
+    }
+
+    const callbacks: CodeMirrorCallbacks = {
+      updateBlockText: (id, text) => {
+        const block = this.allBlocks.get(id);
+        if (block) {
+          block.presetText = text;
+          this.allBlocks.set(id, block);
+          if (this.options.onBlockUpdated) {
+            this.options.onBlockUpdated(id, text);
+          }
+        }
+      },
+      openPopup: (id, rect) => {
+        this.options.onOpenPopup(id, rect);
+      },
+      deleteBlock: (id) => {
+        this.allBlocks.delete(id);
+        if (this.options.onBlockDeleted) {
+          this.options.onBlockDeleted(id);
+        }
+      }
+    };
+
+    const state = createEditorState(options.initialDoc, callbacks, options.initialBlocks || []);
+    this.view = new EditorView({
+      state,
+      parent: options.parent
+    });
+  }
+
+  public addBlock() {
+    const newBlock: EditorBlock = {
+      id: Math.random().toString(36).substr(2, 9),
+      placeholder: '请输入编辑块内容为空时的提示文案',
+      presetText: ''
+    };
+    this.allBlocks.set(newBlock.id, newBlock);
+    const { from, to } = this.view.state.selection.main;
+    this.view.dispatch({
+      changes: { from, to, insert: ' ' },
+      effects: addBlockEffect.of(newBlock),
+      selection: { anchor: from + 1 }
+    });
+    this.view.focus();
+    return newBlock;
+  }
+
+  public syncBlock(updatedBlock: EditorBlock) {
+    this.allBlocks.set(updatedBlock.id, { ...updatedBlock });
+    this.view.dispatch({
+      effects: updateBlockEffect.of(updatedBlock)
+    });
+  }
+
+  public getBlock(id: string) {
+    return this.allBlocks.get(id);
+  }
+
+  public getData() {
+    return getEditorData(this.view, this.allBlocks);
+  }
+
+  public destroy() {
+    this.view.destroy();
+  }
+}
+
 // 定义用于在文档中添加和删除块的状态效果
 export const addBlockEffect = StateEffect.define<EditorBlock>();
 export const updateBlockEffect = StateEffect.define<EditorBlock>();
