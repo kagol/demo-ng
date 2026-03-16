@@ -9,6 +9,7 @@ import {
 } from './editor-core';
 import { AIDialogPlugin } from './plugins/ai-dialog';
 import { LibraryBlockPlugin } from './plugins/library-block';
+import { EditBlockPlugin } from './plugins/edit-block';
 
 @Component({
   selector: 'app-editor',
@@ -26,6 +27,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   showPopup = false;
   popupStyle = { top: '0px', left: '0px' };
   editingBlock: EditorBlock = { id: '', placeholder: '', presetText: '' };
+  editPlugin!: EditBlockPlugin;
 
   // 插件弹窗状态
   showPluginPopup = false;
@@ -86,19 +88,24 @@ export class EditorComponent implements OnInit, OnDestroy {
         this.showPluginPopup = false;
       }
     });
+
+    this.editPlugin = new EditBlockPlugin({
+      onShow: (block, style) => {
+        this.editingBlock = block;
+        this.popupStyle = style;
+        this.showPopup = true;
+      },
+      onHide: () => {
+        this.showPopup = false;
+      }
+    });
   }
 
   openPopup(id: string, rect: DOMRect) {
     const block = this.editor.getBlock(id);
     if (block) {
-      this.editingBlock = { ...block };
-      this.showPopup = true;
-      // 计算弹窗位置（简单逻辑：在 block 下方）
       const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
-      this.popupStyle = {
-        top: `${rect.bottom - editorRect.top + 10}px`,
-        left: `${rect.left - editorRect.left}px`
-      };
+      this.editPlugin.show(block, rect, editorRect);
     }
   }
 
@@ -154,12 +161,13 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   syncBlock() {
     if (this.editingBlock.id) {
+      this.editPlugin.updateEditingBlock(this.editingBlock);
       this.editor.syncBlock(this.editingBlock);
     }
   }
 
   closePopup() {
-    this.showPopup = false;
+    this.editPlugin.hide();
     this.libraryPlugin.hide();
     this.showAIDialog = false;
     this.stopAIResponse();
