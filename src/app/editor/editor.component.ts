@@ -2,12 +2,13 @@ import { Component, ElementRef, OnInit, ViewChild, OnDestroy, ViewEncapsulation 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorView } from '@codemirror/view';
-import { 
-  EditorBlock, 
-  CodeMirrorCallbacks, 
-  addBlockEffect, 
+import {
+  EditorBlock,
+  CodeMirrorCallbacks,
+  addBlockEffect,
   updateBlockEffect, 
-  createEditorState 
+  createEditorState,
+  getEditorData
 } from './editor-core';
 
 @Component({
@@ -93,6 +94,14 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
 
   closePopup() {
     this.showPopup = false;
+  }
+
+  onConfirm() {
+    const data = getEditorData(this.view, this.allBlocks);
+    console.log('--- Editor Data (JSON) ---');
+    console.log(JSON.stringify(data.json, null, 2));
+    console.log('--- Editor Data (HTML) ---');
+    console.log(data.html);
   }
 
   ngOnDestroy() {
