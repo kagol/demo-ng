@@ -1,4 +1,4 @@
-import { EditorState, StateField, StateEffect } from '@codemirror/state';
+import { EditorState, StateField, StateEffect, Facet } from '@codemirror/state';
 import { EditorView, keymap, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -14,12 +14,12 @@ export interface EditorBlock {
 export interface CodeMirrorCallbacks {
   updateBlockText: (id: string, text: string) => void;
   openPopup: (id: string, rect: DOMRect) => void;
+  deleteBlock: (id: string) => void;
 }
 
 // 定义用于在文档中添加和删除块的状态效果
 export const addBlockEffect = StateEffect.define<EditorBlock>();
 export const updateBlockEffect = StateEffect.define<EditorBlock>();
-export const deleteBlockEffect = StateEffect.define<string>();
 
 // 自定义 Widget
 class BlockWidget extends WidgetType {
@@ -76,6 +76,27 @@ class BlockWidget extends WidgetType {
       this.callbacks.openPopup(this.block.id, rect);
     };
 
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && input.value === '') {
+        e.preventDefault();
+        // Find the position of this block and remove it
+        let pos: number | null = null;
+        view.state.field(blockField).between(0, view.state.doc.length, (from, to, value) => {
+          if (value.spec.widget === this) {
+            pos = from;
+          }
+        });
+
+        if (pos !== null) {
+          this.callbacks.deleteBlock(this.block.id);
+          view.dispatch({
+            changes: { from: pos, to: pos + 1 },
+            selection: { anchor: pos }
+          });
+        }
+      }
+    };
+
     span.appendChild(input);
     return span;
   }
@@ -87,26 +108,41 @@ class BlockWidget extends WidgetType {
   }
 }
 
+const callbacksFacet = Facet.define<CodeMirrorCallbacks, CodeMirrorCallbacks>({
+  combine: values => values[0]
+});
+
+const initialBlocksFacet = Facet.define<{ pos: number, block: EditorBlock }[], { pos: number, block: EditorBlock }[]>({
+  combine: values => values.length ? values[0] : []
+});
+
 // 状态字段：管理文档中的所有块装饰器
-export const createBlockField = (callbacks: CodeMirrorCallbacks, initialBlocks: { pos: number, block: EditorBlock }[] = []) => StateField.define<DecorationSet>({
-  create() {
-    if (initialBlocks.length === 0) return Decoration.none;
-    const deco = initialBlocks.map(({ pos, block }) => Decoration.widget({
-      widget: new BlockWidget(block, callbacks),
-      side: 0
-    }).range(pos));
+export const blockField = StateField.define<DecorationSet>({
+  create(state) {
+    const callbacks = state.facet(callbacksFacet);
+    const initialBlocks = state.facet(initialBlocksFacet);
+    if (!initialBlocks || initialBlocks.length === 0) return Decoration.none;
+    
+    const deco = initialBlocks
+      .slice()
+      .sort((a, b) => a.pos - b.pos)
+      .map(({ pos, block }) => {
+        return Decoration.replace({
+          widget: new BlockWidget(block, callbacks),
+        }).range(pos, pos + 1);
+      });
     return Decoration.set(deco, true);
   },
   update(decorations, tr) {
+    const callbacks = tr.state.facet(callbacksFacet);
     decorations = decorations.map(tr.changes);
     
     for (let e of tr.effects) {
       if (e.is(addBlockEffect)) {
-        const pos = tr.state.selection.main.head;
-        const blockDecoration = Decoration.widget({
+        const pos = tr.state.selection.main.head - 1; // Position of the inserted space
+        const blockDecoration = Decoration.replace({
           widget: new BlockWidget(e.value, callbacks),
-          side: 0
-        }).range(pos);
+        }).range(pos, pos + 1);
         decorations = decorations.update({ add: [blockDecoration] });
       } else if (e.is(updateBlockEffect)) {
         const newBlock = e.value;
@@ -124,26 +160,50 @@ export const createBlockField = (callbacks: CodeMirrorCallbacks, initialBlocks: 
               const widget = value.spec.widget;
               return !(widget instanceof BlockWidget && widget.block.id === newBlock.id);
             },
-            add: [Decoration.widget({
+            add: [Decoration.replace({
               widget: new BlockWidget(newBlock, callbacks),
-              side: 0
-            }).range(pos)]
+            }).range(pos, pos + 1)]
           });
         }
-      } else if (e.is(deleteBlockEffect)) {
-        const blockId = e.value;
-        decorations = decorations.update({
-          filter: (from, to, value) => {
-            const widget = value.spec.widget;
-            return !(widget instanceof BlockWidget && widget.block.id === blockId);
-          }
-        });
       }
     }
     return decorations;
   },
   provide: f => EditorView.decorations.from(f)
 });
+
+// Helper function to handle backspace on blocks
+const deleteBlock = (view: EditorView, callbacks: CodeMirrorCallbacks) => {
+  const pos = view.state.selection.main.head;
+  if (pos === 0) return false;
+
+  let blockId: string | null = null;
+  let blockPos: number | null = null;
+
+  // Check if there is a block just before the cursor
+  const field = view.state.field(blockField, false);
+  if (field) {
+    field.between(pos - 1, pos, (from, to, value) => {
+      const widget = value.spec.widget;
+      if (widget instanceof BlockWidget) {
+        blockId = widget.block.id;
+        blockPos = from;
+      }
+    });
+  }
+
+  if (blockId && blockPos !== null) {
+    // Notify component
+    callbacks.deleteBlock(blockId);
+    // Remove the character from doc (this will also remove the decoration)
+    view.dispatch({
+      changes: { from: blockPos, to: blockPos + 1 },
+      selection: { anchor: blockPos }
+    });
+    return true;
+  }
+  return false;
+};
 
 export const editorTheme = EditorView.theme({
   '&': { height: '100%', outline: 'none' },
@@ -185,16 +245,33 @@ export const editorTheme = EditorView.theme({
 });
 
 export function createEditorState(initialDoc: string, callbacks: CodeMirrorCallbacks, initialBlocks: { pos: number, block: EditorBlock }[] = []) {
-  return EditorState.create({
+  const extensions = [
+    history(),
+    keymap.of([
+      ...defaultKeymap,
+      ...historyKeymap,
+      {
+        key: 'Backspace',
+        run: (view) => deleteBlock(view, callbacks)
+      }
+    ]),
+    markdown({ base: markdownLanguage, codeLanguages: languages }),
+    callbacksFacet.of(callbacks),
+    initialBlocksFacet.of(initialBlocks),
+    blockField,
+    editorTheme
+  ];
+
+  const state = EditorState.create({
     doc: initialDoc,
-    extensions: [
-      history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
-      markdown({ base: markdownLanguage, codeLanguages: languages }),
-      createBlockField(callbacks, initialBlocks),
-      editorTheme
-    ]
+    extensions
   });
+
+  // If there are initial blocks, we need to add them to the field.
+  // This is tricky with StateField.create. 
+  // Let's instead use a transaction if possible, or just handle them in create().
+  
+  return state;
 }
 
 export function createEditorView(parent: HTMLElement, state: EditorState) {

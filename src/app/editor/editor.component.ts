@@ -44,12 +44,17 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
     // 同步到 allBlocks 以便后续弹窗读取
     initialBlocks.forEach(item => this.allBlocks.set(item.block.id, item.block));
 
-    const initialState = createEditorState('# 角色\n\n你是一个 ', this, initialBlocks);
+    // 为初始块在文档中预留一个空格
+    const initialState = createEditorState('# 角色\n\n你是一个  ', this, initialBlocks);
     
     this.view = new EditorView({
       state: initialState,
       parent: this.editorHost.nativeElement
     });
+  }
+
+  deleteBlock(id: string) {
+    this.allBlocks.delete(id);
   }
 
   updateBlockText(id: string, text: string) {
@@ -94,8 +99,11 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
       presetText: ''
     };
     this.allBlocks.set(newBlock.id, newBlock);
+    const { from, to } = this.view.state.selection.main;
     this.view.dispatch({
-      effects: addBlockEffect.of(newBlock)
+      changes: { from, to, insert: ' ' }, // Insert a space for the block
+      effects: addBlockEffect.of(newBlock),
+      selection: { anchor: from + 1 }
     });
     this.view.focus();
   }
