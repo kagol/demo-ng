@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, OnDestroy, ViewEncapsulation, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorView } from '@codemirror/view';
@@ -78,6 +78,15 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
     }
   }
 
+  @HostListener('document:mousedown', ['$event'])
+  onDocumentMouseDown(event: MouseEvent) {
+    // 如果点击了弹窗外部，关闭弹窗
+    // 这里弹窗内部已经 stopPropagation 了，所以只要进到这里且 showPopup 为 true 就可以认为点击了外部
+    if (this.showPopup) {
+      this.closePopup();
+    }
+  }
+
   addBlock() {
     const newBlock: EditorBlock = {
       id: Math.random().toString(36).substr(2, 9),
@@ -91,18 +100,15 @@ export class EditorComponent implements OnInit, OnDestroy, CodeMirrorCallbacks {
     this.view.focus();
   }
 
-  saveBlock() {
+  syncBlock() {
     if (this.editingBlock.id) {
-      // 深度同步到全局 Map
       const updatedBlock = { ...this.editingBlock };
       this.allBlocks.set(updatedBlock.id, updatedBlock);
       
-      // 通过 dispatch 触发装饰器重新创建，从而刷新 input 的 placeholder 和内容
+      // 实时同步到 CodeMirror 视图
       this.view.dispatch({
         effects: updateBlockEffect.of(updatedBlock)
       });
-      
-      this.closePopup();
     }
   }
 

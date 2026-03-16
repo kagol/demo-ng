@@ -17,19 +17,15 @@
     <div #editorHost class="editor-host"></div>
 
     <!-- 编辑块配置弹窗 -->
-    <div *ngIf="showPopup" class="block-popup" [ngStyle]="popupStyle">
+    <div *ngIf="showPopup" class="block-popup" [ngStyle]="popupStyle" (mousedown)="$event.stopPropagation()">
       <div class="popup-content">
         <div class="form-item">
           <label>空白引导</label>
-          <input type="text" [(ngModel)]="editingBlock.placeholder" placeholder="请输入编辑块内容为空时的提示文案">
+          <input type="text" [(ngModel)]="editingBlock.placeholder" (ngModelChange)="syncBlock()" placeholder="请输入编辑块内容为空时的提示文案">
         </div>
         <div class="form-item">
           <label>预设文本</label>
-          <input type="text" [(ngModel)]="editingBlock.presetText" placeholder="请在此处输入提示词">
-        </div>
-        <div class="popup-footer">
-          <button class="btn-cancel" (click)="closePopup()">取消</button>
-          <button class="btn-save" (click)="saveBlock()">保存</button>
+          <input type="text" [(ngModel)]="editingBlock.presetText" (ngModelChange)="syncBlock()" placeholder="请在此处输入提示词">
         </div>
       </div>
       <div class="popup-arrow"></div>
