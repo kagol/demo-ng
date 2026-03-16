@@ -121,6 +121,10 @@ export class CustomEditor {
     return this.allBlocks.get(id);
   }
 
+  public coordsAtPos(pos: number) {
+    return this.view.coordsAtPos(pos);
+  }
+
   public getData() {
     return getEditorData(this.view, this.allBlocks);
   }

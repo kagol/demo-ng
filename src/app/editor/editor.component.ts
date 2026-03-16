@@ -7,6 +7,7 @@ import {
   CustomEditor,
   CustomEditorOptions
 } from './editor-core';
+import { AIDialogPlugin } from './plugins/ai-dialog';
 
 @Component({
   selector: 'app-editor',
@@ -44,7 +45,7 @@ export class EditorComponent implements OnInit, OnDestroy {
   isGenerating = false;
   aiLoading = false;
   private aiTriggerPos: number = 0;
-  private aiStreamTimer: any = null;
+  private aiPlugin!: AIDialogPlugin;
 
   ngOnInit() {
     const initialBlocks = [
@@ -73,6 +74,13 @@ export class EditorComponent implements OnInit, OnDestroy {
     };
 
     this.editor = new CustomEditor(options);
+
+    this.aiPlugin = new AIDialogPlugin({
+      onStream: (text) => this.aiResponseText = text,
+      onLoading: (loading) => this.aiLoading = loading,
+      onComplete: () => this.isGenerating = false,
+      onStop: () => this.isGenerating = false
+    });
   }
 
   openPopup(id: string, rect: DOMRect) {
@@ -98,7 +106,7 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   openAIDialog(pos: number) {
     this.aiTriggerPos = pos;
-    const coords = this.editor.view.coordsAtPos(pos);
+    const coords = this.editor.coordsAtPos(pos);
     if (coords) {
       const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
       this.aiDialogStyle = {
@@ -115,36 +123,16 @@ export class EditorComponent implements OnInit, OnDestroy {
     if (!this.aiQuestion || this.isGenerating) return;
 
     this.isGenerating = true;
-    this.aiLoading = true;
-    this.aiResponseText = '';
-
-    // 模拟 AI 流式输出
-    const fullResponse = `洲、美洲积累了丰富的在地经验，擅长结合用户需求定制专属旅行方案，曾帮助1000+人解决旅行难题，被旅行者亲切称为"旅行百事通"。\n\n## 核心性格与风格\n- **性格特点**：热情开朗、专业耐心，擅长用轻松幽默的方式化解旅行焦虑（如："别慌！机票改签我有3个小窍门，保准帮你搞定~"），遇到用户疑问会像朋友般细致拆解细节（如："你担心的高原反应，我去年在西藏徒步时总结过4个缓解方法..."）。\n- **语言风格**：口语化且富有感染力，常用"宝藏地""小众玩法"等旅行圈`;
-    
-    let index = 0;
-    this.aiStreamTimer = setInterval(() => {
-      this.aiLoading = false;
-      if (index < fullResponse.length) {
-        this.aiResponseText += fullResponse[index];
-        index++;
-      } else {
-        this.stopAIResponse();
-      }
-    }, 30);
+    this.aiPlugin.sendQuestion(this.aiQuestion);
   }
 
   stopAIResponse() {
-    if (this.aiStreamTimer) {
-      clearInterval(this.aiStreamTimer);
-      this.aiStreamTimer = null;
-    }
-    this.isGenerating = false;
-    this.aiLoading = false;
+    this.aiPlugin.stopResponse();
   }
 
   openPluginPopup(pos: number) {
     this.pluginTriggerPos = pos;
-    const coords = this.editor.view.coordsAtPos(pos);
+    const coords = this.editor.coordsAtPos(pos);
     if (coords) {
       const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
       this.pluginPopupStyle = {
@@ -188,6 +176,9 @@ export class EditorComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.editor) {
       this.editor.destroy();
+    }
+    if (this.aiPlugin) {
+      this.aiPlugin.destroy();
     }
   }
 }
