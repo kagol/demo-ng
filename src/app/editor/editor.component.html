@@ -30,6 +30,28 @@
       </div>
       <div class="popup-arrow"></div>
     </div>
+
+    <!-- 插件选择弹窗 -->
+    <div *ngIf="showPluginPopup" class="plugin-popup" [ngStyle]="pluginPopupStyle" (mousedown)="$event.stopPropagation()">
+      <div class="plugin-popup-content">
+        <div class="plugin-category">
+          <div class="category-title">插件</div>
+          <div *ngFor="let item of plugins" class="plugin-item" (click)="addPluginBlock(item)">
+            <i class="icon-plugin"></i>
+            <span class="item-name">{{ item.name }}</span>
+            <button class="btn-add">添加</button>
+          </div>
+        </div>
+        <div class="plugin-category">
+          <div class="category-title">工作流</div>
+          <div *ngFor="let item of workflows" class="plugin-item" (click)="addPluginBlock(item)">
+            <i class="icon-workflow"></i>
+            <span class="item-name">{{ item.name }}</span>
+            <button class="btn-add">添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 底部操作栏 -->

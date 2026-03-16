@@ -25,6 +25,17 @@ export class EditorComponent implements OnInit, OnDestroy {
   popupStyle = { top: '0px', left: '0px' };
   editingBlock: EditorBlock = { id: '', placeholder: '', presetText: '' };
 
+  // 插件弹窗状态
+  showPluginPopup = false;
+  pluginPopupStyle = { top: '0px', left: '0px' };
+  plugins = [
+    { id: 'plugin-1', name: 'LinkReaderPlugin', type: 'plugin' as const },
+  ];
+  workflows = [
+    { id: 'workflow-1', name: 'condition_1_872', type: 'workflow' as const },
+  ];
+  private pluginTriggerPos: number = 0;
+
   ngOnInit() {
     const initialBlocks = [
       {
@@ -42,6 +53,7 @@ export class EditorComponent implements OnInit, OnDestroy {
       initialDoc: '# 角色\n\n你是一个  ',
       initialBlocks,
       onOpenPopup: (id, rect) => this.openPopup(id, rect),
+      onTriggerPluginPopup: (pos) => this.openPluginPopup(pos),
       onBlockUpdated: (id, text) => {
         if (this.showPopup && this.editingBlock.id === id) {
           this.editingBlock.presetText = text;
@@ -68,9 +80,27 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   @HostListener('document:mousedown', ['$event'])
   onDocumentMouseDown(event: MouseEvent) {
-    if (this.showPopup) {
+    if (this.showPopup || this.showPluginPopup) {
       this.closePopup();
     }
+  }
+
+  openPluginPopup(pos: number) {
+    this.pluginTriggerPos = pos;
+    const coords = this.editor.view.coordsAtPos(pos);
+    if (coords) {
+      const editorRect = this.editorHost.nativeElement.getBoundingClientRect();
+      this.pluginPopupStyle = {
+        top: `${coords.bottom - editorRect.top + 10}px`,
+        left: `${coords.left - editorRect.left}px`
+      };
+      this.showPluginPopup = true;
+    }
+  }
+
+  addPluginBlock(item: { id: string, name: string, type: 'plugin' | 'workflow' }) {
+    this.editor.addPluginBlock(this.pluginTriggerPos, item);
+    this.closePopup();
   }
 
   addBlock() {
@@ -85,6 +115,7 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   closePopup() {
     this.showPopup = false;
+    this.showPluginPopup = false;
   }
 
   onConfirm() {

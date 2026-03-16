@@ -149,6 +149,59 @@
         border-left: 1px solid #f3f4f6;
       }
     }
+
+    .plugin-popup {
+      position: absolute;
+      z-index: 1000;
+      width: 300px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+
+      .plugin-popup-content {
+        .plugin-category {
+          margin-bottom: 12px;
+          .category-title {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            padding-left: 4px;
+          }
+          .plugin-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            &:hover { background: #f9fafb; }
+
+            .icon-plugin, .icon-workflow {
+              width: 24px;
+              height: 24px;
+              margin-right: 12px;
+              background-size: contain;
+            }
+            .icon-plugin { background-image: url('data:image/svg+xml,...'); /* 在此替换为您的图标 */ }
+            .icon-workflow { background-image: url('data:image/svg+xml,...'); /* 在此替换为您的图标 */ }
+
+            .item-name {
+              flex-grow: 1;
+              font-size: 14px;
+              color: #374151;
+            }
+            .btn-add {
+              background: none;
+              border: none;
+              color: #4f46e5;
+              font-weight: 500;
+              cursor: pointer;
+            }
+          }
+        }
+      }
+    }
   }
 
   // Footer
@@ -247,4 +300,25 @@
 
 .cm-editor .block-input {
   text-align: left !important;
+}
+
+.cm-plugin-block {
+  display: inline-flex;
+  align-items: center;
+  background-color: #eef2ff;
+  color: #4f46e5;
+  padding: 2px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  font-size: 14px;
+  vertical-align: middle;
+
+  .icon-plugin, .icon-workflow {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    background-size: contain;
+  }
+  .icon-plugin { background-image: url('data:image/svg+xml,...'); /* 在此替换为您的图标 */ }
+  .icon-workflow { background-image: url('data:image/svg+xml,...'); /* 在此替换为您的图标 */ }
 }
